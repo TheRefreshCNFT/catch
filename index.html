@@ -56,7 +56,21 @@
 #game.flash-miss {
   animation: flash-red 0.4s ease;
 }
-
+.streak {
+  position: absolute;
+  width: 8px;
+  height: 32px;
+  background: white;
+  box-shadow: 0 0 12px white;
+  opacity: 0.8;
+  pointer-events: none;
+}
+#streak-left {
+  left: 0;
+}
+#streak-right {
+  right: 0;
+}
   </style>
 </head>
 <body>
@@ -70,6 +84,8 @@
   <div id="game">
     <div id="start">Tap<br>to<br>Start</div>
     <div id="barrel">🔄</div>
+    <div id="streak-left" class="streak"></div>
+<div id="streak-right" class="streak"></div>
     <div id="overlay"><div></div></div>
   </div>
 </div>
@@ -148,7 +164,9 @@
     const em = document.createElement('div');
     em.className = 'emoji'; em.textContent = '🔗';
     em.style.left = Math.random() * (game.clientWidth - 32) + 'px';
-    game.appendChild(em); currentEmoji = em;
+    game.appendChild(em); currentEmoji = em; const leftStreak = document.getElementById('streak-left');
+const rightStreak = document.getElementById('streak-right');
+leftStreak.style.top = rightStreak.style.top = '0px';
 
     const start = performance.now();
     (function fall(now) {
@@ -156,6 +174,7 @@
       const d = now - start;
       const y = (d / fallDuration) * (game.clientHeight - 100);
       em.style.transform = `translateY(${y}px)`;
+      leftStreak.style.top = rightStreak.style.top = y + 'px';
       const eb = barrel.getBoundingClientRect();
       const r = em.getBoundingClientRect();
       if (r.left > eb.left - 16 && r.right < eb.left + eb.width + 16 && r.bottom > eb.top) {
