@@ -200,7 +200,7 @@
   function endLevel(passed) {
     clearInterval(timerInterval); timerInterval = null;
     if (passed) {
-      level++; tries = 0; extraLife = false;
+      level++; tries = 0;
       showOverlayContent(`<div>Cleared! Score: ${totalScore}</div>`);
       setTimeout(startGame, 2000);
     } else if (tries < 2) {
