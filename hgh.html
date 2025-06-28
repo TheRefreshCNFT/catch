@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+    body, html { height:100%; background:#222; display:flex; align-items:center; justify-content:center; }
+    #app { position:relative; width:90vw; max-width:600px; height:90vh; max-height:800px;
+           background:#333; border:4px solid #444; border-radius:16px; overflow:hidden;
+           display:flex; flex-direction:column; }
+    header { display:flex; justify-content:space-between; padding:8px;
+             font:600 18px sans-serif; color:#fff; }
+    #extra { cursor:pointer; }
+    #game { flex:1; position:relative; overflow:hidden; }
+    #start { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
+             color:#fff; font:700 32px sans-serif; text-align:center; cursor:pointer; }
+    #barrel { position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+               font-size:48px; }
+    .emoji { position:absolute; font-size:32px; }
+    #overlay { position:absolute; top:0; left:0; width:100%; height:100%;
+                background:rgba(0,0,0,0.8); color:#fff; display:none;
+                align-items:center; justify-content:center; flex-direction:column;
+                text-align:center; padding:16px; }
+    #overlay div { font:700 32px sans-serif; margin:8px 0; }
+    #overlay button { margin-top:16px; padding:8px 16px; font:600 18px sans-serif; cursor:pointer; }
+    /* Barrel flash on catch */
+.barrel-flash {
+  animation: barrelFlash 0.4s ease;
+}
+
+@keyframes barrelFlash {
+  0%, 100% {
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.3);
+  }
+}
+
+
+@keyframes flash-green {
+  0%, 100%   { background: #333; }   /* original #app background */
+  50%        { background: #2a2; }   /* bright-ish green */
+}
+
+@keyframes flash-red {
+  0%, 100%   { background: #333; }
+  50%        { background: #a22; }   /* bright-ish red */
+}
+
+#game.flash-catch {
+  animation: flash-green 0.4s ease;
+}
+
+#game.flash-miss {
+  animation: flash-red 0.4s ease;
+}
+
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div id="timer">0:00</div>
+    <div id="score">00</div>
+    <div id="extra"></div>
+    <div id="level">Level 1</div>
+  </header>
+  <div id="game">
+    <div id="start">Tap<br>to<br>Start</div>
+    <div id="barrel">🔄</div>
+    <div id="overlay"><div></div></div>
+  </div>
+</div>
+<script>
+(() => {
+  const timerEl = document.getElementById('timer');
+  const scoreEl = document.getElementById('score');
+  const levelEl = document.getElementById('level');
+  const extraEl = document.getElementById('extra');
+  const startEl = document.getElementById('start');
+  const game = document.getElementById('game');
+  const barrel = document.getElementById('barrel');
+  const overlay = document.getElementById('overlay');
+  const overlayMsg = overlay.querySelector('div');
+
+  let totalScore = 0;
+  let seconds = 0;
+  let level = 1;
+  let tries = 0;
+  let dropCount = 0;
+  const dropLimit = 10;
+  let threshold = dropLimit;
+  let fallDuration = 2000;
+  let currentEmoji = null;
+  let timerInterval = null;
+  let extraLife = false;
+  let lostCount = 0;
+
+  const fmt = n => n < 10 ? '0'+n : n;
+
+  function updateTimer() {
+    seconds++;
+    timerEl.textContent = Math.floor(seconds/60) + ':' + fmt(seconds%60);
+  }
+
+  function showOverlayContent(html) {
+    overlay.innerHTML = html;
+    overlay.style.display = 'flex';
+  }
+
+  function startGame() {
+    startEl.style.display = 'none';
+    threshold = level * dropLimit;
+    levelEl.textContent = 'Level ' + level;
+    showOverlayContent(`<div>Level ${level}</div>`);
+    // hide level overlay after 2s, then start countdown
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      countdown(3);
+    }, 2000);
+  }
+
+  function countdown(n) {
+    if (n > 0) {
+      startEl.textContent = n;
+      startEl.style.display = 'block';
+      setTimeout(() => countdown(n - 1), 1000);
+    } else {
+      startEl.style.display = 'none';
+      beginLevel();
+    }
+  }
+
+  function beginLevel() {
+    if (!timerInterval) {
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+    tries++;
+    dropCount = 0;
+    fallDuration = 2000 / Math.pow(1.25, level - 1);
+    spawnEmoji();
+  }
+
+  function spawnEmoji() {
+    if (currentEmoji) { currentEmoji.remove(); currentEmoji = null; }
+    const em = document.createElement('div');
+    em.className = 'emoji'; em.textContent = '🔗';
+    em.style.left = Math.random() * (game.clientWidth - 32) + 'px';
+    game.appendChild(em); currentEmoji = em;
+
+    const start = performance.now();
+    (function fall(now) {
+      if (currentEmoji !== em) return;
+      const d = now - start;
+      const y = (d / fallDuration) * (game.clientHeight - 100);
+      em.style.transform = `translateY(${y}px)`;
+      const eb = barrel.getBoundingClientRect();
+      const r = em.getBoundingClientRect();
+      if (r.left > eb.left - 16 && r.right < eb.left + eb.width + 16 && r.bottom > eb.top) {
+        // catch
+        currentEmoji.remove(); currentEmoji = null;
+        totalScore++; scoreEl.textContent = fmt(totalScore);
+        dropCount++;
+
+// FLASH GREEN
+      game.classList.add('flash-catch');
+      setTimeout(() => {
+        game.classList.remove('flash-catch');
+      }, 400);
+
+        if (totalScore === 60 && !extraLife) { extraLife = true; extraEl.textContent = '🔄'; }
+        return checkEnd();
+      }
+      if (d < fallDuration) {
+        requestAnimationFrame(fall);
+      } else {
+        // miss
+        currentEmoji.remove(); currentEmoji = null;
+        totalScore--; lostCount++; scoreEl.textContent = fmt(totalScore);
+        dropCount++;
+        
+       game.classList.add('flash-miss');
+      setTimeout(() => {
+        game.classList.remove('flash-miss');
+      }, 400); 
+        
+        return checkEnd();
+      }
+    })(performance.now());
+  }
+  
+  function checkEnd() {
+    if (totalScore === threshold) return endLevel(true);
+    if (dropCount === dropLimit) return endLevel(false);
+    spawnEmoji();
+  }
+
+  function endLevel(passed) {
+    clearInterval(timerInterval); timerInterval = null;
+    if (passed) {
+      level++; tries = 0; extraLife = false;
+      showOverlayContent(`<div>Cleared! Score: ${totalScore}</div>`);
+      setTimeout(startGame, 2000);
+    } else if (tries < 2) {
+      showOverlayContent(`<div>Retry Level ${level}</div>`);
+      setTimeout(startGame, 2000);
+    } else if (extraLife) {
+      extraLife = false; extraEl.textContent = '';
+      showOverlayContent(`<div>Extra Life Used</div>`);
+      setTimeout(startGame, 2000);
+    } else {
+      // Game Over: show full stats
+      const html = `
+        <div>Game Over</div>
+        <div>Date: ${new Date().toLocaleString()}</div>
+        <div>Time: ${Math.floor(seconds/60)}:${fmt(seconds%60)}</div>
+        <div>Level Reached: ${level}</div>
+        <div>Total Points Lost: ${lostCount}</div>
+        <div>Total Points: ${totalScore}</div>
+        <button id="downloadStats">Stats</button>
+      `;
+      showOverlayContent(html);
+      document.getElementById('downloadStats').onclick = () => {
+        const data = `Game Over Stats\nDate: ${new Date().toLocaleString()}\nTime: ${Math.floor(seconds/60)}:${fmt(seconds%60)}\nLevel: ${level}\nPoints Lost: ${lostCount}\nTotal Points: ${totalScore}`;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data], {type:'text/plain'}));
+        a.download = 'stats.txt';
+        a.click();
+      };
+    }
+  }
+
+  game.addEventListener('mousemove', e => {
+    if (!currentEmoji) return;
+    const x = e.clientX - game.getBoundingClientRect().left;
+    barrel.style.left = Math.min(Math.max(x,24), game.clientWidth-24) + 'px';
+  });
+  game.addEventListener('touchmove', e =>
+    game.dispatchEvent(new MouseEvent('mousemove', { clientX: e.touches[0].clientX }))
+  );
+  startEl.addEventListener('click', startGame);
+  extraEl.addEventListener('click', () => {
+    if (extraLife && tries >= 2) {
+      extraLife = false; extraEl.textContent = '';
+      showOverlayContent(`<div>Extra Life Used</div>`);
+      setTimeout(startGame, 2000);
+    }
+  });
+})();
+</script>
+</body>
+</html>
