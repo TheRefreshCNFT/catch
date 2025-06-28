@@ -57,11 +57,12 @@
   animation: flash-red 0.4s ease;
 }
 .streak {
+.streak {
   position: absolute;
-  width: 2px;
-  height: 10px;
-  background: white;
-  box-shadow: 0 0 16px 6px white;
+  width: 2px; /* thin glow width */
+  height: 40px; /* length of the glowing trail */
+  background: transparent; /* no solid core */
+  box-shadow: 0 0 24px 8px white; /* just the glow */
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
@@ -73,6 +74,7 @@
 #streak-right {
   right: 2px;
 }
+
   </style>
 </head>
 <body>
