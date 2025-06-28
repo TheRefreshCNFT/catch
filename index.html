@@ -166,9 +166,12 @@
     const em = document.createElement('div');
     em.className = 'emoji'; em.textContent = '🔗';
     em.style.left = Math.random() * (game.clientWidth - 32) + 'px';
-    game.appendChild(em); currentEmoji = em; const leftStreak = document.getElementById('streak-left');
+    game.appendChild(em); currentEmoji = em;
+    const leftStreak = document.getElementById('streak-left');
 const rightStreak = document.getElementById('streak-right');
+leftStreak.style.opacity = rightStreak.style.opacity = '1';
 leftStreak.style.top = rightStreak.style.top = '0px';
+
 
     const start = performance.now();
     (function fall(now) {
@@ -176,12 +179,16 @@ leftStreak.style.top = rightStreak.style.top = '0px';
       const d = now - start;
       const y = (d / fallDuration) * (game.clientHeight - 100);
       em.style.transform = `translateY(${y}px)`;
-      leftStreak.style.top = rightStreak.style.top = y + 'px';
+      leftStreak.style.transform = rightStreak.style.transform = `translateY(${y}px)`;
+
       const eb = barrel.getBoundingClientRect();
       const r = em.getBoundingClientRect();
       if (r.left > eb.left - 16 && r.right < eb.left + eb.width + 16 && r.bottom > eb.top) {
         // catch
         currentEmoji.remove(); currentEmoji = null;
+
+leftStreak.style.opacity = rightStreak.style.opacity = '0';
+
         totalScore++; scoreEl.textContent = fmt(totalScore);
         dropCount++;
 
@@ -199,6 +206,10 @@ leftStreak.style.top = rightStreak.style.top = '0px';
       } else {
         // miss
         currentEmoji.remove(); currentEmoji = null;
+leftStreak.style.opacity = rightStreak.style.opacity = '0';
+
+
+
         totalScore--; lostCount++; scoreEl.textContent = fmt(totalScore);
         dropCount++;
         
